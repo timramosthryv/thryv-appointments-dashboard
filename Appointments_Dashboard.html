@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thryv | Appointments Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --orange:      #FF6200;
+  --orange-lt:   #FFF0E8;
+  --orange-md:   #FF8040;
+  --green:       #12B76A;
+  --green-lt:    #ECFDF3;
+  --red:         #F04438;
+  --red-lt:      #FEF3F2;
+  --amber:       #F79009;
+  --amber-lt:    #FFFAEB;
+  --blue:        #2E6BE6;
+  --blue-lt:     #EFF4FF;
+  --ink:         #101828;
+  --ink-md:      #344054;
+  --ink-lt:      #667085;
+  --border:      #E4E7EC;
+  --bg:          #F9FAFB;
+  --white:       #FFFFFF;
+  --shadow-sm:   0 1px 3px rgba(16,24,40,.08), 0 1px 2px rgba(16,24,40,.04);
+  --shadow-md:   0 4px 8px -2px rgba(16,24,40,.1), 0 2px 4px -2px rgba(16,24,40,.06);
+  --radius:      10px;
+  --radius-sm:   6px;
+  --radius-pill: 20px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+/* ── TOP NAV ────────────────────────────────────────────────── */
+.topnav {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  gap: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 32px;
+  text-decoration: none;
+}
+
+.brand-icon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--orange), #FF8C42);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: -1px;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -.2px;
+}
+
+.nav-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 24px 0 0;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+
+.nav-link {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-lt);
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: all .15s;
+  white-space: nowrap;
+}
+
+.nav-link:hover { background: var(--bg); color: var(--ink-md); }
+.nav-link.active { background: var(--orange-lt); color: var(--orange); font-weight: 600; }
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badge-count {
+  background: var(--orange);
+  color: white;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  min-width: 22px;
+  text-align: center;
+}
+
+.btn-ghost {
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-md);
+  border: 1px solid var(--border);
+  background: var(--white);
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-ghost:hover { background: var(--bg); border-color: #C4C9D4; }
+
+.btn-primary {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  border: none;
+  background: var(--orange);
+  cursor: pointer;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-primary:hover { background: #E05600; }
+
+/* ── PAGE HEADER ────────────────────────────────────────────── */
+.page-header {
+  padding: 24px 28px 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.page-title { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -.3px; }
+.page-subtitle { font-size: 13px; color: var(--ink-lt); margin-top: 2px; }
+
+.filter-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 28px 0;
+  flex-wrap: wrap;
+}
+
+.filter-label { font-size: 12px; font-weight: 500; color: var(--ink-lt); }
+
+.filter-input {
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--white);
+  outline: none;
+  transition: border-color .15s;
+}
+.filter-input:focus { border-color: var(--orange); }
+
+select.filter-input { padding-right: 28px; cursor: pointer; }
+
+.filter-sep { font-size: 12px; color: var(--ink-lt); }
+
+.btn-clear {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-lt);
+  background: var(--white);
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-clear:hover { border-color: #C4C9D4; color: var(--ink-md); }
+
+.filter-result {
+  font-size: 12px;
+  color: var(--orange);
+  font-weight: 500;
+}
+
+/* ── KPI ROW ────────────────────────────────────────────────── */
+.kpi-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr;
+  gap: 16px;
+  padding: 20px 28px;
+}
+
+.kpi-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: box-shadow .2s;
+}
+.kpi-card:hover { box-shadow: var(--shadow-md); }
+
+.kpi-card.featured {
+  background: linear-gradient(135deg, var(--orange) 0%, #FF8C42 100%);
+  border-color: transparent;
+  color: white;
+}
+
+.kpi-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--ink-lt);
+}
+.kpi-card.featured .kpi-label { color: rgba(255,255,255,.75); }
+
+.kpi-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+  letter-spacing: -1px;
+}
+.kpi-card.featured .kpi-value { color: white; }
+
+.kpi-sub {
+  font-size: 12px;
+  color: var(--ink-lt);
+  margin-top: 2px;
+}
+.kpi-card.featured .kpi-sub { color: rgba(255,255,255,.8); font-size: 12px; }
+
+.kpi-icon {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+/* ── CONTENT AREA ───────────────────────────────────────────── */
+.content-area { padding: 0 28px 40px; }
+
+/* ── TAB NAV ────────────────────────────────────────────────── */
+.tab-nav {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+  background: var(--white);
+  padding: 0 4px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.tab-btn {
+  padding: 14px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-lt);
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--ink-md); }
+.tab-btn.active { color: var(--orange); border-bottom-color: var(--orange); font-weight: 600; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── CARDS ──────────────────────────────────────────────────── */
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+.card-subtitle { font-size: 12px; color: var(--ink-lt); margin-top: 1px; }
+
+/* ── CHARTS ─────────────────────────────────────────────────── */
+.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.chart-full { margin-bottom: 20px; }
+.chart-body { padding: 20px; }
+.chart-wrap { position: relative; }
+.chart-wrap.h260 { height: 260px; }
+.chart-wrap.h220 { height: 220px; }
+
+/* ── TABLE ──────────────────────────────────────────────────── */
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.search-input {
+  height: 34px;
+  width: 220px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 10px 0 32px;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8' stroke='%23667085' stroke-width='2'/%3E%3Cpath d='m21 21-4.35-4.35' stroke='%23667085' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E") 10px center no-repeat;
+  outline: none;
+  transition: border-color .15s;
+}
+.search-input:focus { border-color: var(--orange); }
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+.data-table thead th {
+  background: var(--bg);
+  color: var(--ink-lt);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding: 10px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.data-table thead th:hover { color: var(--ink-md); }
+.data-table thead th.num { text-align: center; }
+
+.data-table tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink-md);
+  vertical-align: middle;
+}
+.data-table tbody td.num { text-align: center; font-variant-numeric: tabular-nums; }
+.data-table tbody td.name { font-weight: 500; color: var(--ink); }
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr:hover td { background: #FAFBFC; }
+
+/* ── BADGES ─────────────────────────────────────────────────── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.pill.green  { background: var(--green-lt);  color: #027A48; }
+.pill.green::before  { background: var(--green); }
+.pill.red    { background: var(--red-lt);    color: #B42318; }
+.pill.red::before    { background: var(--red); }
+.pill.amber  { background: var(--amber-lt);  color: #B54708; }
+.pill.amber::before  { background: var(--amber); }
+.pill.slate  { background: #F2F4F7;          color: #344054; }
+.pill.slate::before  { background: #98A2B3; }
+
+/* ── PCT BAR ────────────────────────────────────────────────── */
+.pct-wrap { display: flex; align-items: center; gap: 8px; }
+.pct-track { flex: 1; height: 5px; background: #F2F4F7; border-radius: 10px; overflow: hidden; min-width: 60px; }
+.pct-fill  { height: 100%; background: var(--green); border-radius: 10px; transition: width .3s; }
+.pct-label { font-size: 12px; font-weight: 600; color: var(--ink-md); min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── DETAIL FILTERS ─────────────────────────────────────────── */
+.detail-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.detail-row label { font-size: 12px; font-weight: 500; color: var(--ink-lt); }
+
+/* ── DATA LOG ───────────────────────────────────────────────── */
+.log-actions { display: flex; gap: 8px; padding: 16px 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+
+.btn-sm {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: all .15s;
+}
+.btn-sm.green  { background: var(--green-lt);  color: #027A48; border-color: #A9EFC5; }
+.btn-sm.green:hover  { background: #D1FADF; }
+.btn-sm.danger { background: var(--red-lt);    color: #B42318; border-color: #FECDCA; }
+.btn-sm.danger:hover { background: #FEE4E2; }
+.btn-sm.neutral { background: var(--white); color: var(--ink-md); }
+.btn-sm.neutral:hover { background: var(--bg); }
+
+.log-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+.log-entry:hover { background: var(--bg); }
+.log-entry:last-child { border-bottom: none; }
+.log-file { font-weight: 600; color: var(--ink); font-size: 13px; }
+.log-meta { font-size: 12px; color: var(--ink-lt); margin-top: 3px; }
+.log-badge { background: var(--orange-lt); color: var(--orange); border-radius: var(--radius-pill); padding: 3px 10px; font-size: 12px; font-weight: 700; }
+
+/* ── EMPTY STATE ────────────────────────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 64px 20px;
+  color: var(--ink-lt);
+}
+.empty .e-icon { font-size: 40px; margin-bottom: 12px; opacity: .5; }
+.empty h3 { font-size: 15px; font-weight: 600; color: var(--ink-md); margin-bottom: 6px; }
+.empty p  { font-size: 13px; }
+
+/* ── UPLOAD MODAL ───────────────────────────────────────────── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(16,24,40,.5);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.overlay.open { display: flex; }
+
+.modal {
+  background: var(--white);
+  border-radius: 12px;
+  width: 480px;
+  box-shadow: 0 20px 60px rgba(16,24,40,.2);
+  overflow: hidden;
+}
+
+.modal-top {
+  padding: 24px 24px 0;
+}
+
+.modal-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--orange-lt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 14px;
+}
+
+.modal-title { font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.modal-desc  { font-size: 13px; color: var(--ink-lt); margin-bottom: 20px; }
+
+.drop-zone {
+  border: 1.5px dashed #D0D5DD;
+  border-radius: var(--radius);
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .15s;
+  background: var(--bg);
+  margin-bottom: 4px;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: var(--orange);
+  background: var(--orange-lt);
+}
+.drop-zone .dz-main { font-size: 13px; font-weight: 500; color: var(--ink-md); }
+.drop-zone .dz-main span { color: var(--orange); }
+.drop-zone .dz-sub  { font-size: 12px; color: var(--ink-lt); margin-top: 4px; }
+
+.upload-status {
+  min-height: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 0 0;
+  color: var(--green);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 20px 24px;
+  border-top: 1px solid var(--border);
+  margin-top: 16px;
+}
+
+#fileInput, #importInput { display: none; }
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <a class="brand" href="#">
+    <div class="brand-icon">T</div>
+    <span class="brand-name">Thryv</span>
+  </a>
+  <div class="nav-divider"></div>
+  <div class="nav-links">
+    <button class="nav-link active" onclick="switchTab('overview', this)">Overview</button>
+    <button class="nav-link" onclick="switchTab('byEmployee', this)">By Employee</button>
+    <button class="nav-link" onclick="switchTab('byType', this)">By Type</button>
+    <button class="nav-link" onclick="switchTab('detail', this)">Employee Detail</button>
+    <button class="nav-link" onclick="switchTab('log', this)">Data Log</button>
+  </div>
+  <div class="nav-right">
+    <span class="badge-count" id="recordBadge">0</span>
+    <button class="btn-ghost" onclick="exportJSON()">Export</button>
+    <button class="btn-primary" onclick="openModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload Weekly File
+    </button>
+  </div>
+</nav>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <div>
+    <div class="page-title">Appointments Dashboard</div>
+    <div class="page-subtitle">Customer Success · Weekly appointment tracking and performance</div>
+  </div>
+</div>
+
+<!-- FILTER STRIP -->
+<div class="filter-strip">
+  <span class="filter-label">From</span>
+  <input type="date" class="filter-input" id="filterFrom" onchange="applyFilters()">
+  <span class="filter-sep">—</span>
+  <input type="date" class="filter-input" id="filterTo" onchange="applyFilters()">
+  <span class="filter-label" style="margin-left:8px">Employee</span>
+  <select class="filter-input" id="filterEmployee" onchange="applyFilters()">
+    <option value="">All Employees</option>
+  </select>
+  <button class="btn-clear" onclick="clearFilters()">Clear</button>
+  <span class="filter-result" id="filterResult"></span>
+</div>
+
+<!-- KPI ROW -->
+<div class="kpi-row">
+  <div class="kpi-card featured">
+    <div class="kpi-label">Total Appointments</div>
+    <div class="kpi-value" id="kpiTotal">—</div>
+    <div class="kpi-sub" id="kpiRange">No data loaded</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Completed</div>
+    <div class="kpi-value" id="kpiCompleted" style="color:var(--green)">—</div>
+    <div class="kpi-sub" id="kpiCompletedSub"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Cancelled</div>
+    <div class="kpi-value" id="kpiCancelled" style="color:var(--red)">—</div>
+    <div class="kpi-sub" id="kpiCancelledSub"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">No Shows</div>
+    <div class="kpi-value" id="kpiNoShow" style="color:var(--amber)">—</div>
+    <div class="kpi-sub" id="kpiNoShowSub"></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Completion Rate</div>
+    <div class="kpi-value" id="kpiRate" style="color:var(--ink)">—</div>
+    <div class="kpi-sub">of all appointments</div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content-area">
+
+  <!-- Tab nav -->
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchContentTab('overview', this)">Overview</button>
+    <button class="tab-btn" onclick="switchContentTab('byEmployee', this)">By Employee</button>
+    <button class="tab-btn" onclick="switchContentTab('byType', this)">By Type</button>
+    <button class="tab-btn" onclick="switchContentTab('detail', this)">Employee Detail</button>
+    <button class="tab-btn" onclick="switchContentTab('log', this)">Data Log</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="tab-panel active" id="tab-overview">
+    <div class="chart-full card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Appointments by Employee</div>
+          <div class="card-subtitle">Top 20 by volume · Stacked by status</div>
+        </div>
+      </div>
+      <div class="chart-body">
+        <div class="chart-wrap h260"><canvas id="chartEmployee"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-row">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Status Breakdown</div>
+        </div>
+        <div class="chart-body">
+          <div class="chart-wrap h220"><canvas id="chartStatus"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Appointments by Date</div>
+        </div>
+        <div class="chart-body">
+          <div class="chart-wrap h220"><canvas id="chartDate"></canvas></div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-full card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Thryv Kickoff Call — Top 5 Employees</div>
+          <div class="card-subtitle">Accounts assigned this period · Completed, Cancelled, No Show</div>
+        </div>
+        <span id="kickoffTotal" style="font-size:12px;color:var(--ink-lt);font-weight:500"></span>
+      </div>
+      <div class="chart-body">
+        <div class="chart-wrap h260"><canvas id="chartKickoff"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BY EMPLOYEE -->
+  <div class="tab-panel" id="tab-byEmployee">
+    <div class="card">
+      <div class="table-toolbar">
+        <div class="card-title">By Employee</div>
+        <input type="text" class="search-input" placeholder="Search employee…" id="searchEmployee" oninput="renderEmployeeTable()">
+      </div>
+      <table class="data-table" id="employeeTable">
+        <thead>
+          <tr>
+            <th onclick="sortTable('employeeTable',0)">Employee</th>
+            <th class="num" onclick="sortTable('employeeTable',1)">Total</th>
+            <th class="num" onclick="sortTable('employeeTable',2)">Completed</th>
+            <th class="num" onclick="sortTable('employeeTable',3)">Cancelled</th>
+            <th class="num" onclick="sortTable('employeeTable',4)">No Show</th>
+            <th class="num" onclick="sortTable('employeeTable',5)">Other</th>
+            <th onclick="sortTable('employeeTable',6)">Completion %</th>
+          </tr>
+        </thead>
+        <tbody id="employeeTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- BY TYPE -->
+  <div class="tab-panel" id="tab-byType">
+    <div class="card">
+      <div class="table-toolbar">
+        <div class="card-title">By Appointment Type</div>
+        <input type="text" class="search-input" placeholder="Search type…" id="searchType" oninput="renderTypeTable()">
+      </div>
+      <table class="data-table" id="typeTable">
+        <thead>
+          <tr>
+            <th onclick="sortTable('typeTable',0)">Appointment Type</th>
+            <th class="num" onclick="sortTable('typeTable',1)">Total</th>
+            <th class="num" onclick="sortTable('typeTable',2)">Completed</th>
+            <th class="num" onclick="sortTable('typeTable',3)">Cancelled</th>
+            <th class="num" onclick="sortTable('typeTable',4)">No Show</th>
+            <th class="num" onclick="sortTable('typeTable',5)">Other</th>
+            <th onclick="sortTable('typeTable',6)">Completion %</th>
+          </tr>
+        </thead>
+        <tbody id="typeTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DETAIL -->
+  <div class="tab-panel" id="tab-detail">
+    <div class="card">
+      <div class="table-toolbar">
+        <div class="card-title">Employee × Appointment Type</div>
+        <input type="text" class="search-input" placeholder="Search…" id="searchDetail" oninput="renderDetailTable()">
+      </div>
+      <div class="detail-row">
+        <label>Employee</label>
+        <select class="filter-input" id="detailEmployee" onchange="renderDetailTable()">
+          <option value="">All Employees</option>
+        </select>
+        <label>Type</label>
+        <select class="filter-input" id="detailType" onchange="renderDetailTable()">
+          <option value="">All Types</option>
+        </select>
+      </div>
+      <table class="data-table" id="detailTable">
+        <thead>
+          <tr>
+            <th onclick="sortTable('detailTable',0)">Employee</th>
+            <th onclick="sortTable('detailTable',1)">Appointment Type</th>
+            <th class="num" onclick="sortTable('detailTable',2)">Total</th>
+            <th class="num" onclick="sortTable('detailTable',3)">Completed</th>
+            <th class="num" onclick="sortTable('detailTable',4)">Cancelled</th>
+            <th class="num" onclick="sortTable('detailTable',5)">No Show</th>
+            <th class="num" onclick="sortTable('detailTable',6)">Other</th>
+            <th onclick="sortTable('detailTable',7)">Completion %</th>
+          </tr>
+        </thead>
+        <tbody id="detailTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div class="tab-panel" id="tab-log">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Upload History</div>
+      </div>
+      <div class="log-actions">
+        <button class="btn-sm green" onclick="exportJSON()">Export JSON Backup</button>
+        <button class="btn-sm neutral" onclick="importJSON()">Import JSON Backup</button>
+        <button class="btn-sm danger" onclick="clearAllData()">Clear All Data</button>
+        <input type="file" id="importInput" accept=".json" onchange="handleImport(event)">
+      </div>
+      <div id="uploadLog">
+        <div class="empty"><div class="e-icon">📂</div><h3>No files uploaded yet</h3><p>Click "Upload Weekly File" to get started.</p></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content-area -->
+
+<!-- UPLOAD MODAL -->
+<div class="overlay" id="modal">
+  <div class="modal">
+    <div class="modal-top">
+      <div class="modal-icon">📊</div>
+      <div class="modal-title">Upload Weekly Appointments File</div>
+      <div class="modal-desc">Select your .xlsx export. New records are added automatically — duplicates are skipped so you never double-count.</div>
+      <div class="drop-zone" id="dropZone"
+           onclick="document.getElementById('fileInput').click()"
+           ondragover="handleDragOver(event)"
+           ondragleave="handleDragLeave(event)"
+           ondrop="handleDrop(event)">
+        <div class="dz-main"><span>Click to browse</span> or drag and drop</div>
+        <div class="dz-sub">.xlsx files only</div>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
+      <div class="upload-status" id="uploadStatus"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STORAGE ─────────────────────────────────────────────────
+const SK = 'thryv_appts_v1', LK = 'thryv_log_v1';
+let allData = [], filteredData = [];
+let charts  = {};
+const sortSt = {};
+
+function load()    { try { allData = JSON.parse(localStorage.getItem(SK)||'[]'); } catch { allData=[]; } }
+function save()    { localStorage.setItem(SK, JSON.stringify(allData)); }
+function loadLog() { try { return JSON.parse(localStorage.getItem(LK)||'[]'); } catch { return []; } }
+function saveLog(l){ localStorage.setItem(LK, JSON.stringify(l)); }
+
+// ─── PARSE ───────────────────────────────────────────────────
+function mapSg(s){ s=(s||'').trim(); if(s==='Completed')return'Completed'; if(s==='Cancelled')return'Cancelled'; if(s==='No Show')return'No Show'; return'Other'; }
+
+function parseExcel(file){
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(ws);
+        const out=rows.map(r=>{
+          const dt=r['Appointment Time'], d=dt?new Date(dt):null;
+          return{ staff:(r['Staff Name']||'').toString().trim(), service:(r['Service Name']||'').toString().trim(), status:(r['Status']||'').toString().trim(), sg:mapSg(r['Status']), client:(r['Client Name']||'').toString().trim(), source:(r['Source']||'').toString().trim(), duration:r['Duration (In minutes)']||0, dt_iso:d?d.toISOString():'', date:d?d.toISOString().split('T')[0]:'' };
+        }).filter(r=>r.staff&&r.dt_iso);
+        res(out);
+      }catch(err){rej(err);}
+    };
+    fr.onerror=rej;
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+function getKey(r){ return `${r.staff}|${r.dt_iso}|${r.client}`; }
+
+function mergeIn(incoming){
+  const ex=new Set(allData.map(getKey)); let n=0;
+  for(const r of incoming){ const k=getKey(r); if(!ex.has(k)){ex.add(k);allData.push(r);n++;} }
+  return n;
+}
+
+// ─── FILTERS ─────────────────────────────────────────────────
+function applyFilters(){
+  const from=document.getElementById('filterFrom').value, to=document.getElementById('filterTo').value, emp=document.getElementById('filterEmployee').value;
+  filteredData=allData.filter(r=>{ if(from&&r.date<from)return false; if(to&&r.date>to)return false; if(emp&&r.staff!==emp)return false; return true; });
+  document.getElementById('filterResult').textContent = filteredData.length!==allData.length ? `Showing ${filteredData.length.toLocaleString()} of ${allData.length.toLocaleString()} records` : '';
+  renderAll();
+}
+function clearFilters(){ ['filterFrom','filterTo','filterEmployee'].forEach(id=>{ const el=document.getElementById(id); if(el.tagName==='SELECT')el.value=''; else el.value=''; }); applyFilters(); }
+
+function populateDropdowns(){
+  const staff=[...new Set(allData.map(r=>r.staff))].sort();
+  ['filterEmployee','detailEmployee'].forEach(id=>{
+    const sel=document.getElementById(id), cur=sel.value;
+    sel.innerHTML='<option value="">All Employees</option>';
+    staff.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; sel.appendChild(o); });
+    if(cur) sel.value=cur;
+  });
+  const types=[...new Set(allData.map(r=>r.service))].sort();
+  const dt=document.getElementById('detailType'), curt=dt.value;
+  dt.innerHTML='<option value="">All Types</option>';
+  types.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; dt.appendChild(o); });
+  if(curt) dt.value=curt;
+}
+
+// ─── AGGREGATION ─────────────────────────────────────────────
+function agg(data, keyFn){
+  const m={};
+  for(const r of data){ const k=keyFn(r); if(!m[k]) m[k]={key:k,total:0,Completed:0,Cancelled:0,'No Show':0,Other:0}; m[k].total++; m[k][r.sg]++; }
+  return Object.values(m).map(x=>({...x,pct:x.total>0?x.Completed/x.total:0}));
+}
+
+function stats(data){
+  const total=data.length, completed=data.filter(r=>r.sg==='Completed').length, cancelled=data.filter(r=>r.sg==='Cancelled').length, noShow=data.filter(r=>r.sg==='No Show').length, other=data.filter(r=>r.sg==='Other').length;
+  const dates=data.map(r=>r.date).filter(Boolean).sort();
+  return{total,completed,cancelled,noShow,other,min:dates[0]||'',max:dates[dates.length-1]||''};
+}
+
+// ─── KPIs ─────────────────────────────────────────────────────
+function renderKPIs(){
+  const s=stats(filteredData), pct=s.total>0?(s.completed/s.total*100).toFixed(1):0;
+  document.getElementById('kpiTotal').textContent     = s.total.toLocaleString();
+  document.getElementById('kpiCompleted').textContent = s.completed.toLocaleString();
+  document.getElementById('kpiCancelled').textContent = s.cancelled.toLocaleString();
+  document.getElementById('kpiNoShow').textContent    = s.noShow.toLocaleString();
+  document.getElementById('kpiRate').textContent      = pct+'%';
+  document.getElementById('kpiRange').textContent     = s.min&&s.max ? s.min+' – '+s.max : 'No data loaded';
+  document.getElementById('kpiCompletedSub').textContent = s.total>0?(s.completed/s.total*100).toFixed(1)+'% of total':'';
+  document.getElementById('kpiCancelledSub').textContent = s.total>0?(s.cancelled/s.total*100).toFixed(1)+'% of total':'';
+  document.getElementById('kpiNoShowSub').textContent    = s.total>0?(s.noShow/s.total*100).toFixed(1)+'% of total':'';
+  document.getElementById('recordBadge').textContent  = allData.length.toLocaleString();
+}
+
+// ─── CHARTS ──────────────────────────────────────────────────
+// Thryv brand color palette — orange hero + gray tonal scale
+const C_ORANGE  = '#FF6200';   // Thryv primary — Completed (hero)
+const C_DARK    = '#888780';   // Mid gray — Cancelled
+const C_AMBER   = '#B4B2A9';   // Light gray — No Show
+const C_GRAY    = '#D3D1C7';   // Very light gray — Other
+const CHARTFONT = { family:'-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif', size:12 };
+
+// Register datalabels plugin globally
+Chart.register(ChartDataLabels);
+
+// Shared datalabels config: show total on top of each stacked bar
+const STACK_LABELS = {
+  datalabels:{
+    display: ctx => ctx.datasetIndex === ctx.chart.data.datasets.length - 1,
+    formatter: (val, ctx) => {
+      const sum = ctx.chart.data.datasets.reduce((acc,ds)=>{
+        const v=ds.data[ctx.dataIndex]; return acc+(isNaN(v)?0:v);
+      },0);
+      return sum > 0 ? sum : '';
+    },
+    anchor:'end', align:'top',
+    font:{ size:10, weight:'700', family:CHARTFONT.family },
+    color:'#344054',
+    offset:2,
+  }
+};
+
+// Doughnut labels: show count inside each arc
+const DONUT_LABELS = {
+  datalabels:{
+    display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
+    formatter: (val) => val > 0 ? val.toLocaleString() : '',
+    color:'#fff',
+    font:{ size:13, weight:'700', family:CHARTFONT.family },
+    textShadowBlur:4, textShadowColor:'rgba(0,0,0,.3)',
+  }
+};
+
+function dc(id){ if(charts[id]){charts[id].destroy();delete charts[id];} }
+
+function renderCharts(){
+  // ── By Employee ─────────────────────────────────────────────
+  const byEmp=agg(filteredData,r=>r.staff).sort((a,b)=>b.total-a.total).slice(0,20);
+  dc('chartEmployee');
+  charts['chartEmployee']=new Chart(document.getElementById('chartEmployee'),{
+    type:'bar',
+    data:{
+      labels:byEmp.map(e=>e.key),
+      datasets:[
+        {label:'Completed',data:byEmp.map(e=>e.Completed),backgroundColor:C_ORANGE,borderRadius:2},
+        {label:'Cancelled',data:byEmp.map(e=>e.Cancelled),backgroundColor:C_DARK,  borderRadius:2},
+        {label:'No Show',  data:byEmp.map(e=>e['No Show']),backgroundColor:C_AMBER, borderRadius:2},
+        {label:'Other',    data:byEmp.map(e=>e.Other),     backgroundColor:C_GRAY,  borderRadius:2},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{font:CHARTFONT,boxWidth:10,padding:16}},
+        tooltip:{mode:'index'},
+        ...STACK_LABELS
+      },
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:{font:{size:10},maxRotation:45,color:'#667085'}},
+        y:{stacked:true,grid:{color:'#F2F4F7'},ticks:{font:{size:10},color:'#667085'}}
+      }
+    }
+  });
+
+  // ── Status Doughnut ─────────────────────────────────────────
+  const s=stats(filteredData);
+  dc('chartStatus');
+  charts['chartStatus']=new Chart(document.getElementById('chartStatus'),{
+    type:'doughnut',
+    data:{
+      labels:['Completed','Cancelled','No Show','Other'],
+      datasets:[{
+        data:[s.completed,s.cancelled,s.noShow,s.other],
+        backgroundColor:[C_ORANGE,C_DARK,C_AMBER,C_GRAY],
+        borderWidth:3, borderColor:'#fff', hoverOffset:5
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{
+        legend:{position:'bottom',labels:{font:CHARTFONT,boxWidth:10,padding:14}},
+        tooltip:{callbacks:{label:ctx=>{ const v=ctx.parsed,t=ctx.dataset.data.reduce((a,b)=>a+b,0); return ` ${ctx.label}: ${v.toLocaleString()} (${t>0?(v/t*100).toFixed(1):0}%)`; }}},
+        ...DONUT_LABELS
+      }
+    }
+  });
+
+  // ── By Date ─────────────────────────────────────────────────
+  const byDate=agg(filteredData,r=>r.date).sort((a,b)=>a.key.localeCompare(b.key));
+  dc('chartDate');
+  charts['chartDate']=new Chart(document.getElementById('chartDate'),{
+    type:'bar',
+    data:{
+      labels:byDate.map(d=>d.key),
+      datasets:[
+        {label:'Completed',data:byDate.map(d=>d.Completed),backgroundColor:C_ORANGE,borderRadius:3},
+        {label:'Cancelled',data:byDate.map(d=>d.Cancelled),backgroundColor:C_DARK,  borderRadius:3},
+        {label:'No Show',  data:byDate.map(d=>d['No Show']),backgroundColor:C_AMBER, borderRadius:3},
+        {label:'Other',    data:byDate.map(d=>d.Other),     backgroundColor:C_GRAY,  borderRadius:3},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{font:CHARTFONT,boxWidth:10,padding:14}},
+        ...STACK_LABELS
+      },
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:{font:{size:12},color:'#667085'}},
+        y:{stacked:true,grid:{color:'#F2F4F7'},ticks:{font:{size:10},color:'#667085'}}
+      }
+    }
+  });
+
+  // ── Thryv Kickoff Call — Top 5 ──────────────────────────────
+  renderKickoffChart();
+}
+
+function renderKickoffChart(){
+  const kickoffData = filteredData.filter(r =>
+    r.service.toLowerCase().trim().startsWith('thryv kickoff call') ||
+    r.service.toLowerCase().trim() === 'thryv kickoff call'
+  );
+  const top5 = agg(kickoffData, r=>r.staff).sort((a,b)=>b.total-a.total).slice(0,5);
+
+  const totalEl = document.getElementById('kickoffTotal');
+  if(totalEl) totalEl.textContent = `${kickoffData.length.toLocaleString()} total Kickoff Calls this period`;
+
+  dc('chartKickoff');
+  if(!top5.length) return;
+
+  charts['chartKickoff']=new Chart(document.getElementById('chartKickoff'),{
+    type:'bar',
+    data:{
+      labels:top5.map(e=>e.key),
+      datasets:[
+        {label:'Completed',data:top5.map(e=>e.Completed),backgroundColor:C_ORANGE,borderRadius:4},
+        {label:'Cancelled',data:top5.map(e=>e.Cancelled),backgroundColor:C_DARK,  borderRadius:4},
+        {label:'No Show',  data:top5.map(e=>e['No Show']),backgroundColor:C_AMBER, borderRadius:4},
+        {label:'Other',    data:top5.map(e=>e.Other),     backgroundColor:C_GRAY,  borderRadius:4},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{font:CHARTFONT,boxWidth:10,padding:16}},
+        tooltip:{mode:'index'},
+        datalabels:{
+          display: ctx => ctx.dataset.data[ctx.dataIndex] > 0,
+          formatter: val => val > 0 ? val : '',
+          color: ctx => ctx.datasetIndex===1 ? '#fff' : '#fff',
+          font:{ size:11, weight:'700', family:CHARTFONT.family },
+          anchor:'center', align:'center',
+        }
+      },
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:{font:{size:12,weight:'600'},color:'#344054'}},
+        y:{stacked:true,grid:{color:'#F2F4F7'},ticks:{font:{size:11},color:'#667085'}}
+      }
+    }
+  });
+}
+
+// ─── TABLE HELPERS ────────────────────────────────────────────
+function pctCell(pct){
+  const p=(pct*100).toFixed(1);
+  return `<td data-val="${pct}">
+    <div class="pct-wrap">
+      <div class="pct-track"><div class="pct-fill" style="width:${p}%"></div></div>
+      <span class="pct-label">${p}%</span>
+    </div></td>`;
+}
+function num(n){ return `<td class="num">${n.toLocaleString()}</td>`; }
+
+function noData(cols){ return `<tr><td colspan="${cols}" style="text-align:center;padding:48px;color:var(--ink-lt)">No appointments data to display.<br><small>Upload a file to get started.</small></td></tr>`; }
+
+function sortTable(tid, ci){
+  if(!sortSt[tid]) sortSt[tid]={col:-1,asc:true};
+  const st=sortSt[tid]; st.asc=(st.col===ci)?!st.asc:true; st.col=ci;
+  const tbody=document.querySelector(`#${tid} tbody`);
+  const rows=[...tbody.querySelectorAll('tr')];
+  rows.sort((a,b)=>{
+    const av=a.cells[ci]?.dataset.val??a.cells[ci]?.textContent??'', bv=b.cells[ci]?.dataset.val??b.cells[ci]?.textContent??'';
+    const an=parseFloat(av),bn=parseFloat(bv);
+    const cmp=isNaN(an)?av.localeCompare(bv):an-bn;
+    return st.asc?cmp:-cmp;
+  });
+  rows.forEach(r=>tbody.appendChild(r));
+}
+
+// ─── EMPLOYEE TABLE ───────────────────────────────────────────
+function renderEmployeeTable(){
+  const q=(document.getElementById('searchEmployee').value||'').toLowerCase();
+  const rows=agg(filteredData,r=>r.staff).filter(e=>!q||e.key.toLowerCase().includes(q)).sort((a,b)=>b.total-a.total);
+  const tbody=document.getElementById('employeeTableBody');
+  if(!rows.length){ tbody.innerHTML=noData(7); return; }
+  tbody.innerHTML=rows.map(e=>`<tr>
+    <td class="name">${e.key}</td>${num(e.total)}${num(e.Completed)}${num(e.Cancelled)}${num(e['No Show'])}${num(e.Other)}${pctCell(e.pct)}
+  </tr>`).join('');
+}
+
+// ─── TYPE TABLE ───────────────────────────────────────────────
+function renderTypeTable(){
+  const q=(document.getElementById('searchType').value||'').toLowerCase();
+  const rows=agg(filteredData,r=>r.service).filter(e=>!q||e.key.toLowerCase().includes(q)).sort((a,b)=>b.total-a.total);
+  const tbody=document.getElementById('typeTableBody');
+  if(!rows.length){ tbody.innerHTML=noData(7); return; }
+  tbody.innerHTML=rows.map(e=>`<tr>
+    <td class="name">${e.key}</td>${num(e.total)}${num(e.Completed)}${num(e.Cancelled)}${num(e['No Show'])}${num(e.Other)}${pctCell(e.pct)}
+  </tr>`).join('');
+}
+
+// ─── DETAIL TABLE ─────────────────────────────────────────────
+function renderDetailTable(){
+  const q=(document.getElementById('searchDetail').value||'').toLowerCase();
+  const empF=document.getElementById('detailEmployee').value, typeF=document.getElementById('detailType').value;
+  let src=filteredData;
+  if(empF)  src=src.filter(r=>r.staff===empF);
+  if(typeF) src=src.filter(r=>r.service===typeF);
+  const map={};
+  for(const r of src){ const k=`${r.staff}|||${r.service}`; if(!map[k]) map[k]={staff:r.staff,service:r.service,total:0,Completed:0,Cancelled:0,'No Show':0,Other:0}; map[k].total++; map[k][r.sg]++; }
+  let rows=Object.values(map).map(m=>({...m,pct:m.total>0?m.Completed/m.total:0}));
+  if(q) rows=rows.filter(r=>r.staff.toLowerCase().includes(q)||r.service.toLowerCase().includes(q));
+  rows.sort((a,b)=>a.staff.localeCompare(b.staff)||b.total-a.total);
+  const tbody=document.getElementById('detailTableBody');
+  if(!rows.length){ tbody.innerHTML=noData(8); return; }
+  tbody.innerHTML=rows.map(e=>`<tr>
+    <td class="name">${e.staff}</td>
+    <td>${e.service}</td>
+    ${num(e.total)}${num(e.Completed)}${num(e.Cancelled)}${num(e['No Show'])}${num(e.Other)}${pctCell(e.pct)}
+  </tr>`).join('');
+}
+
+// ─── LOG ─────────────────────────────────────────────────────
+function renderLog(){
+  const log=loadLog(), el=document.getElementById('uploadLog');
+  if(!log.length){ el.innerHTML=`<div class="empty"><div class="e-icon">📂</div><h3>No files uploaded yet</h3><p>Click "Upload Weekly File" to get started.</p></div>`; return; }
+  el.innerHTML=log.slice().reverse().map(e=>`
+    <div class="log-entry">
+      <div>
+        <div class="log-file">📊 ${e.filename}</div>
+        <div class="log-meta">${e.uploadedAt} &nbsp;·&nbsp; ${e.totalRows.toLocaleString()} rows in file &nbsp;·&nbsp; ${e.added.toLocaleString()} new records added</div>
+      </div>
+      <span class="log-badge">+${e.added.toLocaleString()} new</span>
+    </div>`).join('');
+}
+
+// ─── MODAL ───────────────────────────────────────────────────
+function openModal()  { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); document.getElementById('uploadStatus').textContent=''; document.getElementById('fileInput').value=''; }
+function handleDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('drag-over'); }
+function handleDragLeave() { document.getElementById('dropZone').classList.remove('drag-over'); }
+function handleDrop(e){ e.preventDefault(); handleDragLeave(); const f=e.dataTransfer.files[0]; if(f)processFile(f); }
+function handleFileSelect(e){ if(e.target.files[0])processFile(e.target.files[0]); }
+
+async function processFile(file){
+  const st=document.getElementById('uploadStatus');
+  st.style.color='var(--ink-lt)'; st.textContent='Parsing file…';
+  try{
+    const parsed=await parseExcel(file), added=mergeIn(parsed); save();
+    const log=loadLog(); log.push({filename:file.name,uploadedAt:new Date().toLocaleString(),totalRows:parsed.length,added}); saveLog(log);
+    st.style.color='var(--green)'; st.textContent=`✓ ${added.toLocaleString()} new records added · ${(parsed.length-added).toLocaleString()} duplicates skipped`;
+    populateDropdowns(); applyFilters(); renderLog();
+    setTimeout(closeModal,2000);
+  }catch(err){
+    st.style.color='var(--red)'; st.textContent='Error reading file — please check it is a valid .xlsx';
+    console.error(err);
+  }
+}
+
+// ─── EXPORT / IMPORT ─────────────────────────────────────────
+function exportJSON(){
+  const blob=new Blob([JSON.stringify({data:allData,log:loadLog(),exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`thryv_appts_backup_${new Date().toISOString().split('T')[0]}.json`; a.click();
+}
+function importJSON(){ document.getElementById('importInput').click(); }
+function handleImport(e){
+  const file=e.target.files[0]; if(!file)return;
+  const fr=new FileReader();
+  fr.onload=ev=>{
+    try{
+      const obj=JSON.parse(ev.target.result); if(!Array.isArray(obj.data)){alert('Invalid backup file.');return;}
+      const added=mergeIn(obj.data); save();
+      if(obj.log){const log=loadLog();saveLog([...log,...obj.log]);}
+      populateDropdowns(); applyFilters(); renderLog();
+      alert(`Import complete — ${added.toLocaleString()} new records added.`);
+    }catch{alert('Error reading backup file.');}
+  };
+  fr.readAsText(file);
+}
+function clearAllData(){
+  if(!confirm('This permanently deletes all stored data and upload history. Continue?'))return;
+  allData=[]; save(); saveLog([]); populateDropdowns(); applyFilters(); renderLog();
+}
+
+// ─── TABS ─────────────────────────────────────────────────────
+function switchTab(name, btn){
+  document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  switchContentTab(name, document.querySelectorAll('.tab-btn')[['overview','byEmployee','byType','detail','log'].indexOf(name)]);
+}
+
+function switchContentTab(name, btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(btn) btn.classList.add('active');
+  // sync top nav
+  const idx=['overview','byEmployee','byType','detail','log'].indexOf(name);
+  document.querySelectorAll('.nav-link').forEach((b,i)=>b.classList.toggle('active',i===idx));
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────────
+function renderAll(){ renderKPIs(); renderCharts(); renderEmployeeTable(); renderTypeTable(); renderDetailTable(); renderKickoffChart(); }
+
+// ─── INIT ─────────────────────────────────────────────────────
+load();
+filteredData=[...allData];
+populateDropdowns();
+renderAll();
+renderLog();
+</script>
+</body>
+</html>
