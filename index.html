@@ -808,9 +808,9 @@ select.filter-input { padding-right: 28px; cursor: pointer; }
            ondragleave="handleDragLeave(event)"
            ondrop="handleDrop(event)">
         <div class="dz-main"><span>Click to browse</span> or drag and drop</div>
-        <div class="dz-sub">.xlsx files only</div>
+        <div class="dz-sub">Select one or multiple .xlsx files at once</div>
       </div>
-      <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
+      <input type="file" id="fileInput" accept=".xlsx,.xls" multiple onchange="handleFileSelect(event)">
       <div class="upload-status" id="uploadStatus"></div>
     </div>
     <div class="modal-footer">
@@ -1172,22 +1172,46 @@ function openModal()  { document.getElementById('modal').classList.add('open'); 
 function closeModal() { document.getElementById('modal').classList.remove('open'); document.getElementById('uploadStatus').textContent=''; document.getElementById('fileInput').value=''; }
 function handleDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('drag-over'); }
 function handleDragLeave() { document.getElementById('dropZone').classList.remove('drag-over'); }
-function handleDrop(e){ e.preventDefault(); handleDragLeave(); const f=e.dataTransfer.files[0]; if(f)processFile(f); }
-function handleFileSelect(e){ if(e.target.files[0])processFile(e.target.files[0]); }
+function handleDrop(e){ e.preventDefault(); handleDragLeave(); const files=[...e.dataTransfer.files].filter(f=>/\.xlsx?$/i.test(f.name)); if(files.length)processFiles(files); }
+function handleFileSelect(e){ const files=[...e.target.files]; if(files.length)processFiles(files); }
 
-async function processFile(file){
+async function processFiles(files){
   const st=document.getElementById('uploadStatus');
-  st.style.color='var(--ink-lt)'; st.textContent='Parsing file…';
-  try{
-    const parsed=await parseExcel(file), added=mergeIn(parsed); save();
-    const log=loadLog(); log.push({filename:file.name,uploadedAt:new Date().toLocaleString(),totalRows:parsed.length,added}); saveLog(log);
-    st.style.color='var(--green)'; st.textContent=`✓ ${added.toLocaleString()} new records added · ${(parsed.length-added).toLocaleString()} duplicates skipped`;
-    populateDropdowns(); applyFilters(); renderLog();
-    setTimeout(closeModal,2000);
-  }catch(err){
-    st.style.color='var(--red)'; st.textContent='Error reading file — please check it is a valid .xlsx';
-    console.error(err);
+  let totalAdded=0, totalRows=0, errors=[];
+
+  for(let i=0;i<files.length;i++){
+    const file=files[i];
+    st.style.color='var(--ink-lt)';
+    st.textContent=files.length>1
+      ? `Processing file ${i+1} of ${files.length}: ${file.name}…`
+      : `Parsing ${file.name}…`;
+    try{
+      const parsed=await parseExcel(file);
+      const added=mergeIn(parsed);
+      save();
+      const log=loadLog();
+      log.push({filename:file.name,uploadedAt:new Date().toLocaleString(),totalRows:parsed.length,added});
+      saveLog(log);
+      totalAdded+=added;
+      totalRows+=parsed.length;
+    }catch(err){
+      errors.push(file.name);
+      console.error(`Error processing ${file.name}:`, err);
+    }
   }
+
+  populateDropdowns(); applyFilters(); renderLog();
+
+  if(errors.length){
+    st.style.color='var(--red)';
+    st.textContent=`⚠ ${totalAdded.toLocaleString()} records added. Could not read: ${errors.join(', ')}`;
+  } else {
+    st.style.color='var(--green)';
+    st.textContent=files.length>1
+      ? `✓ ${files.length} files processed · ${totalAdded.toLocaleString()} new records added · ${(totalRows-totalAdded).toLocaleString()} duplicates skipped`
+      : `✓ ${totalAdded.toLocaleString()} new records added · ${(totalRows-totalAdded).toLocaleString()} duplicates skipped`;
+  }
+  setTimeout(closeModal, 2500);
 }
 
 // ─── EXPORT / IMPORT ─────────────────────────────────────────
