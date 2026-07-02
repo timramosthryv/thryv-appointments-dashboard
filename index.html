@@ -857,9 +857,23 @@ function parseExcel(file){
 function getKey(r){ return `${r.staff}|${r.dt_iso}|${r.client}`; }
 
 function mergeIn(incoming){
-  const ex=new Set(allData.map(getKey)); let n=0;
-  for(const r of incoming){ const k=getKey(r); if(!ex.has(k)){ex.add(k);allData.push(r);n++;} }
-  return n;
+  // Build index of existing records by key for fast lookup
+  const idx={};
+  allData.forEach((r,i)=>{ idx[getKey(r)]=i; });
+  let added=0, updated=0;
+  for(const r of incoming){
+    const k=getKey(r);
+    if(k in idx){
+      // Overwrite with incoming — newer file has most up-to-date status
+      allData[idx[k]]=r;
+      updated++;
+    } else {
+      idx[k]=allData.length;
+      allData.push(r);
+      added++;
+    }
+  }
+  return { added, updated };
 }
 
 // ─── FILTERS ─────────────────────────────────────────────────
@@ -1161,9 +1175,9 @@ function renderLog(){
     <div class="log-entry">
       <div>
         <div class="log-file">📊 ${e.filename}</div>
-        <div class="log-meta">${e.uploadedAt} &nbsp;·&nbsp; ${e.totalRows.toLocaleString()} rows in file &nbsp;·&nbsp; ${e.added.toLocaleString()} new records added</div>
+        <div class="log-meta">${e.uploadedAt} &nbsp;·&nbsp; ${e.totalRows.toLocaleString()} rows in file &nbsp;·&nbsp; ${e.added.toLocaleString()} new &nbsp;·&nbsp; ${(e.updated||0).toLocaleString()} status updates</div>
       </div>
-      <span class="log-badge">+${e.added.toLocaleString()} new</span>
+      <span class="log-badge">+${e.added.toLocaleString()} new · ↻${(e.updated||0).toLocaleString()} updated</span>
     </div>`).join('');
 }
 
@@ -1177,7 +1191,7 @@ function handleFileSelect(e){ const files=[...e.target.files]; if(files.length)p
 
 async function processFiles(files){
   const st=document.getElementById('uploadStatus');
-  let totalAdded=0, totalRows=0, errors=[];
+  let totalAdded=0, totalUpdated=0, totalRows=0, errors=[];
 
   for(let i=0;i<files.length;i++){
     const file=files[i];
@@ -1187,12 +1201,13 @@ async function processFiles(files){
       : `Parsing ${file.name}…`;
     try{
       const parsed=await parseExcel(file);
-      const added=mergeIn(parsed);
+      const {added,updated}=mergeIn(parsed);
       save();
       const log=loadLog();
-      log.push({filename:file.name,uploadedAt:new Date().toLocaleString(),totalRows:parsed.length,added});
+      log.push({filename:file.name,uploadedAt:new Date().toLocaleString(),totalRows:parsed.length,added,updated});
       saveLog(log);
       totalAdded+=added;
+      totalUpdated+=updated;
       totalRows+=parsed.length;
     }catch(err){
       errors.push(file.name);
@@ -1202,16 +1217,18 @@ async function processFiles(files){
 
   populateDropdowns(); applyFilters(); renderLog();
 
+  const parts=[];
+  if(totalAdded>0)   parts.push(`${totalAdded.toLocaleString()} new records added`);
+  if(totalUpdated>0) parts.push(`${totalUpdated.toLocaleString()} existing records updated with latest status`);
+
   if(errors.length){
     st.style.color='var(--red)';
-    st.textContent=`⚠ ${totalAdded.toLocaleString()} records added. Could not read: ${errors.join(', ')}`;
+    st.textContent=`⚠ ${parts.join(' · ')}. Could not read: ${errors.join(', ')}`;
   } else {
     st.style.color='var(--green)';
-    st.textContent=files.length>1
-      ? `✓ ${files.length} files processed · ${totalAdded.toLocaleString()} new records added · ${(totalRows-totalAdded).toLocaleString()} duplicates skipped`
-      : `✓ ${totalAdded.toLocaleString()} new records added · ${(totalRows-totalAdded).toLocaleString()} duplicates skipped`;
+    st.textContent=`✓ ${files.length>1?files.length+' files processed · ':''}${parts.join(' · ')}`;
   }
-  setTimeout(closeModal, 2500);
+  setTimeout(closeModal, 2800);
 }
 
 // ─── EXPORT / IMPORT ─────────────────────────────────────────
