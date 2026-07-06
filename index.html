@@ -96,6 +96,9 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#FAFAFA}
   <div class="charts-grid">
     <div class="chart-card wide"><div class="card-title">Appointments by Status — Top 15 Employees</div><canvas id="chartStatus"></canvas></div>
     <div class="chart-card wide"><div class="card-title">Thryv Kickoff Call — Top 5 Employees</div><div class="card-sub">Filtered to appointment types starting with "Thryv Kickoff Call"</div><canvas id="chartKickoff"></canvas></div>
+    <div class="chart-card"><div class="card-title">Appointments by Week</div><canvas id="chartWeekly"></canvas></div>
+    <div class="chart-card"><div class="card-title">Daily Appointment Volume</div><canvas id="chartDaily"></canvas></div>
+    <div class="chart-card wide"><div class="card-title">Top 10 Appointment Types by Volume</div><canvas id="chartTopTypes"></canvas></div>
   </div>
 </div>
 <div id="page-employees" class="page">
@@ -183,7 +186,37 @@ function renderEmpTable(){const m={};filteredData.forEach(r=>{if(!m[r.staff])m[r
 function renderTypTable(){const m={};filteredData.forEach(r=>{if(!m[r.service])m[r.service]={service:r.service,Completed:0,Cancelled:0,'No Show':0,Other:0,total:0};m[r.service][r.sg]++;m[r.service].total++;});let rows=Object.values(m);const s=sortSt.typ||{key:'total',dir:-1};rows.sort((a,b)=>{const av=s.key==='pct'?(a.total?a.Completed/a.total:0):(s.key==='service'?a.service:(a[s.key]||0));const bv=s.key==='pct'?(b.total?b.Completed/b.total:0):(s.key==='service'?b.service:(b[s.key]||0));return s.dir*(typeof av==='string'?av.localeCompare(bv):av-bv);});document.getElementById('typBody').innerHTML=rows.map(r=>{const p=r.total?r.Completed/r.total:0;return`<tr><td>${r.service}</td><td>${r.total}</td><td><span class="badge badge-green">${r.Completed}</span></td><td><span class="badge badge-red">${r.Cancelled}</span></td><td><span class="badge badge-amber">${r['No Show']}</span></td><td><span class="badge badge-gray">${r.Other}</span></td><td><div class="pct-bar"><div class="bar-track"><div class="bar-fill" style="width:${p*100}%"></div></div><span>${(p*100).toFixed(1)}%</span></div></td></tr>`;}).join('');}
 function renderLog(){const log=loadLog();const el=document.getElementById('logList');if(!log.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">&#128203;</div><p>No files uploaded yet</p></div>';return;}el.innerHTML=[...log].reverse().map(l=>`<div class="log-item"><div class="log-file">&#128196; ${l.filename}</div><div class="log-meta">${l.uploadedAt}</div><div class="log-meta">${l.totalRows} rows</div><span class="log-badge">+${l.added} new</span>${l.updated?`<span class="log-badge" style="background:#EFF4FF;color:#2E6BE6">${l.updated} updated</span>`:''}</div>`).join('');}
 function sortTable(tbl,key){const cur=sortSt[tbl];sortSt[tbl]={key,dir:cur&&cur.key===key?-cur.dir:-1};if(tbl==='emp')renderEmpTable();else renderTypTable();}
-function renderAll(){renderKPIs();renderStatusChart();renderKickoffChart();renderEmpTable();renderTypTable();renderLog();}
+function renderWeeklyChart(){
+  const weeks=[
+    {label:'Jun 1-5', from:'2026-06-01',to:'2026-06-05'},
+    {label:'Jun 8-12',from:'2026-06-08',to:'2026-06-12'},
+    {label:'Jun 15-19',from:'2026-06-15',to:'2026-06-19'},
+    {label:'Jun 22-26',from:'2026-06-22',to:'2026-06-26'},
+    {label:'Jun 29-30',from:'2026-06-29',to:'2026-06-30'},
+  ];
+  const comp=weeks.map(w=>filteredData.filter(r=>r.date>=w.from&&r.date<=w.to&&r.sg==='Completed').length);
+  const canc=weeks.map(w=>filteredData.filter(r=>r.date>=w.from&&r.date<=w.to&&r.sg==='Cancelled').length);
+  const ns=weeks.map(w=>filteredData.filter(r=>r.date>=w.from&&r.date<=w.to&&r.sg==='No Show').length);
+  const oth=weeks.map(w=>filteredData.filter(r=>r.date>=w.from&&r.date<=w.to&&r.sg==='Other').length);
+  makeChart('chartWeekly',{type:'bar',data:{labels:weeks.map(w=>w.label),datasets:[
+    {label:'Completed',data:comp,backgroundColor:'#FF6200'},
+    {label:'Cancelled',data:canc,backgroundColor:'#888780'},
+    {label:'No Show',data:ns,backgroundColor:'#B4B2A9'},
+    {label:'Other',data:oth,backgroundColor:'#D3D1C7'},
+  ]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'top'},datalabels:{display:ctx=>ctx.dataset.data[ctx.dataIndex]>0,color:'#fff',font:{size:10,weight:'bold'},formatter:v=>v>0?v:''}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'#F2F4F7'}}}},plugins:[ChartDataLabels]});
+}
+function renderDailyChart(){
+  const days=[...new Set(filteredData.map(r=>r.date))].sort();
+  const totals=days.map(d=>filteredData.filter(r=>r.date===d).length);
+  makeChart('chartDaily',{type:'line',data:{labels:days.map(d=>{const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});}),datasets:[{label:'Total Appointments',data:totals,borderColor:'#FF6200',backgroundColor:'rgba(255,98,0,0.08)',fill:true,tension:0.3,pointBackgroundColor:'#FF6200',pointRadius:3}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},datalabels:{display:false}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:15,maxRotation:45}},y:{grid:{color:'#F2F4F7'},beginAtZero:true}}}});
+}
+function renderTopTypesChart(){
+  const m={};filteredData.forEach(r=>{if(!m[r.service])m[r.service]=0;m[r.service]++;});
+  const top=Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  makeChart('chartTopTypes',{type:'bar',data:{labels:top.map(([s])=>s),datasets:[{label:'Total',data:top.map(([,v])=>v),backgroundColor:'#FF6200'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{anchor:'end',align:'end',color:'#344054',font:{size:11,weight:'bold'},formatter:v=>v}},scales:{x:{grid:{color:'#F2F4F7'},beginAtZero:true},y:{grid:{display:false}}}},plugins:[ChartDataLabels]});
+  document.getElementById('chartTopTypes').style.maxHeight='320px';
+}
+function renderAll(){renderKPIs();renderStatusChart();renderKickoffChart();renderWeeklyChart();renderDailyChart();renderTopTypesChart();renderEmpTable();renderTypTable();renderLog();}
 function showPage(name,tab){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));document.getElementById('page-'+name).classList.add('active');tab.classList.add('active');applyFilters();}
 function exportJSON(){const payload=JSON.stringify({data:allData,log:loadLog(),exportedAt:new Date().toISOString()},null,2);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([payload],{type:'application/json'}));a.download='thryv_appts_backup_'+new Date().toISOString().split('T')[0]+'.json';a.click();}
 function clearData(){if(!confirm('Clear all appointment data? This cannot be undone.'))return;allData=[];save();saveLog([]);populateDropdowns();applyFilters();renderLog();}
