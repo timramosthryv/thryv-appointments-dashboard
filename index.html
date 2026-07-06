@@ -208,7 +208,7 @@ function renderWeeklyChart(){
 function renderDailyChart(){
   const days=[...new Set(filteredData.map(r=>r.date))].sort();
   const totals=days.map(d=>filteredData.filter(r=>r.date===d).length);
-  makeChart('chartDaily',{type:'line',data:{labels:days.map(d=>{const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});}),datasets:[{label:'Total Appointments',data:totals,borderColor:'#FF6200',backgroundColor:'rgba(255,98,0,0.08)',fill:true,tension:0.3,pointBackgroundColor:'#FF6200',pointRadius:3}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},datalabels:{display:false}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:15,maxRotation:45}},y:{grid:{color:'#F2F4F7'},beginAtZero:true}}}});
+  makeChart('chartDaily',{type:'bar',data:{labels:days.map(d=>{const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});}),datasets:[{label:'Total Appointments',data:totals,backgroundColor:'#FF6200'}]},options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false},datalabels:{display:ctx=>ctx.dataset.data[ctx.dataIndex]>0,color:'#fff',font:{size:9,weight:'bold'},formatter:v=>v>0?v:''}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:20,maxRotation:45}},y:{grid:{color:'#F2F4F7'},beginAtZero:true}}},plugins:[ChartDataLabels]});
 }
 function renderTopTypesChart(){
   const m={};filteredData.forEach(r=>{if(!m[r.service])m[r.service]=0;m[r.service]++;});
