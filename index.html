@@ -205,13 +205,26 @@ function renderTypTable(){const m={};filteredData.forEach(r=>{if(!m[r.service])m
 function renderLog(){const log=loadLog();const el=document.getElementById('logList');if(!log.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">&#128203;</div><p>No files uploaded yet</p></div>';return;}el.innerHTML=[...log].reverse().map(l=>`<div class="log-item"><div class="log-file">&#128196; ${l.filename}</div><div class="log-meta">${l.uploadedAt}</div><div class="log-meta">${l.totalRows} rows</div><span class="log-badge">+${l.added} new</span>${l.updated?`<span class="log-badge" style="background:#EFF4FF;color:#2E6BE6">${l.updated} updated</span>`:''}</div>`).join('');}
 function sortTable(tbl,key){const cur=sortSt[tbl];sortSt[tbl]={key,dir:cur&&cur.key===key?-cur.dir:-1};if(tbl==='emp')renderEmpTable();else renderTypTable();}
 function renderWeeklyChart(){
-  const weeks=[
-    {label:'Jun 1-5', from:'2026-06-01',to:'2026-06-05'},
-    {label:'Jun 8-12',from:'2026-06-08',to:'2026-06-12'},
-    {label:'Jun 15-19',from:'2026-06-15',to:'2026-06-19'},
-    {label:'Jun 22-26',from:'2026-06-22',to:'2026-06-26'},
-    {label:'Jun 29-30',from:'2026-06-29',to:'2026-06-30'},
-  ];
+  // Build dynamic week buckets from filtered data
+  if(!filteredData.length){if(charts['chartWeekly'])charts['chartWeekly'].destroy();return;}
+  const dates=filteredData.map(r=>r.date).filter(Boolean).sort();
+  const minDate=new Date(dates[0]+'T12:00:00');
+  const maxDate=new Date(dates[dates.length-1]+'T12:00:00');
+  // Snap to Monday of the first week
+  const startMon=new Date(minDate);
+  startMon.setDate(startMon.getDate()-((startMon.getDay()+6)%7));
+  const weeks=[];
+  const cur=new Date(startMon);
+  const fmt=d=>d.toISOString().split('T')[0];
+  const lbl=d=>{const mo=d.toLocaleDateString('en-US',{month:'short'});return mo+' '+d.getDate();};
+  while(cur<=maxDate){
+    const wStart=new Date(cur);
+    const wEnd=new Date(cur);wEnd.setDate(wEnd.getDate()+6);
+    const actualEnd=wEnd>maxDate?maxDate:wEnd;
+    const label=lbl(wStart)+(wStart.getMonth()!==actualEnd.getMonth()?'-'+lbl(actualEnd):'-'+actualEnd.getDate());
+    weeks.push({label,from:fmt(wStart),to:fmt(wEnd)});
+    cur.setDate(cur.getDate()+7);
+  }
   const comp=weeks.map(w=>filteredData.filter(r=>r.date>=w.from&&r.date<=w.to&&r.sg==='Completed').length);
   const canc=weeks.map(w=>filteredData.filter(r=>r.date>=w.from&&r.date<=w.to&&r.sg==='Cancelled').length);
   const ns=weeks.map(w=>filteredData.filter(r=>r.date>=w.from&&r.date<=w.to&&r.sg==='No Show').length);
