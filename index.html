@@ -79,7 +79,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#FAFAFA}
 <div id="page-overview" class="page active">
   <div class="filters">
     <select id="ov-month" onchange="onMonthChange('ov')"><option value="">All Months</option></select>
-        <select id="ov-dept" onchange="applyFilters()" style="padding:6px 12px;border-radius:6px;border:1px solid #ccc;font-size:13px;">
+        <select id="ov-dept" onchange="populateDropdowns();applyFilters()" style="padding:6px 12px;border-radius:6px;border:1px solid #ccc;font-size:13px;">
           <option value="">All Departments</option>
           <option value="CSM">CSM</option>
           <option value="PCSM">PCSM</option>
@@ -110,7 +110,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#FAFAFA}
 <div id="page-employees" class="page">
   <div class="filters">
     <select id="emp-month" onchange="onMonthChange('emp')"><option value="">All Months</option></select>
-        <select id="emp-dept" onchange="applyFilters()" style="padding:6px 12px;border-radius:6px;border:1px solid #ccc;font-size:13px;">
+        <select id="emp-dept" onchange="populateDropdowns();applyFilters()" style="padding:6px 12px;border-radius:6px;border:1px solid #ccc;font-size:13px;">
           <option value="">All Departments</option>
           <option value="CSM">CSM</option>
           <option value="PCSM">PCSM</option>
@@ -138,7 +138,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#FAFAFA}
 <div id="page-types" class="page">
   <div class="filters">
     <select id="typ-month" onchange="onMonthChange('typ')"><option value="">All Months</option></select>
-        <select id="typ-dept" onchange="applyFilters()" style="padding:6px 12px;border-radius:6px;border:1px solid #ccc;font-size:13px;">
+        <select id="typ-dept" onchange="populateDropdowns();applyFilters()" style="padding:6px 12px;border-radius:6px;border:1px solid #ccc;font-size:13px;">
           <option value="">All Departments</option>
           <option value="CSM">CSM</option>
           <option value="PCSM">PCSM</option>
@@ -245,16 +245,33 @@ const DEPT_MAP = {
   "Tony Gautam": "TSS",
   "Isai Arnaud Sanchez": "TSS",
   "Lisbeth Cruz": "CSM",
-  "Jennifer Koly": "CSM"
+  "Jennifer Koly": "CSM",
+  "Adherly Fernandez Sanchez": "TSS",
+  "Alejandro Rodriguez-Medina": "TSS",
+  "Ashley Shaffer": "TSS",
+  "Barbara Larrosa": "TSS",
+  "Brian Constanza de la Cruz": "TSS",
+  "Eric  Bhatia": "TSS",
+  "Genesis Urraca Zamora": "TSS",
+  "Grazziella Cieri Escalante": "TSS",
+  "Karmita Turner": "TSS",
+  "Lawrence Ortiz Gutierrez": "TSS",
+  "Libby Booher": "TSS",
+  "Nicole Fray Feliz": "TSS",
+  "Ronny Brito Guzman": "TSS",
+  "Xiomara Arno": "TSS",
+  "Yessica Montero Urena": "TSS"
 };
 
 function getDept(staffName) {
   if (!staffName) return 'CSM';
-  const trimmed = staffName.trim();
+  // Normalize: trim and collapse multiple spaces
+  const trimmed = staffName.trim().replace(/\s+/g,' ');
   if (DEPT_MAP[trimmed]) return DEPT_MAP[trimmed];
-  // Fuzzy: check if any key starts similarly
+  // Case-insensitive fallback
+  const lower = trimmed.toLowerCase();
   for (const [k, v] of Object.entries(DEPT_MAP)) {
-    if (trimmed.toLowerCase() === k.toLowerCase()) return v;
+    if (k.trim().replace(/\s+/g,' ').toLowerCase() === lower) return v;
   }
   return 'CSM'; // default
 }
@@ -273,7 +290,7 @@ async function processFiles(files){const st=document.getElementById('uploadStatu
 function handleFileSelect(e){processFiles(Array.from(e.target.files));e.target.value='';}
 function handleDrop(e){e.preventDefault();processFiles(Array.from(e.dataTransfer.files));}
 function populateDropdowns(){
-  const staffs=[...new Set(allData.map(r=>r.staff))].sort();
+  const allStaffs=[...new Set(allData.map(r=>r.staff).filter(Boolean))].sort();
   const svcs=[...new Set(allData.map(r=>r.service))].sort();
   const monthSet=[...new Set(allData.map(r=>r.date?r.date.slice(0,7):'').filter(Boolean))].sort();
   const monthLabel=m=>{const[y,mo]=m.split('-');return new Date(+y,+mo-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});};
@@ -281,12 +298,18 @@ function populateDropdowns(){
     const ss=document.getElementById(`${pfx}-staff`);
     const sv=document.getElementById(`${pfx}-service`);
     const sm=document.getElementById(`${pfx}-month`);
+    const sd=document.getElementById(`${pfx}-dept`);
     if(!ss||!sv)return;
-    const ps=ss.value,pv=sv.value,pm=sm?sm.value:'';
+    const ps=ss.value,pv=sv.value,pm=sm?sm.value:'',pd=sd?sd.value:'';
+    // Filter employee list by selected department
+    const deptFilter=sd?sd.value:'';
+    const staffs=deptFilter?allStaffs.filter(s=>getDept(s)===deptFilter):allStaffs;
     ss.innerHTML='<option value="">All Employees</option>'+staffs.map(s=>`<option value="${s}">${s}</option>`).join('');
     sv.innerHTML='<option value="">All Types</option>'+svcs.map(s=>`<option value="${s}">${s}</option>`).join('');
     if(sm)sm.innerHTML='<option value="">All Months</option>'+monthSet.map(m=>`<option value="${m}">${monthLabel(m)}</option>`).join('');
-    ss.value=ps;sv.value=pv;if(sm)sm.value=pm;
+    // Keep staff selection only if still valid for dept
+    ss.value=(staffs.includes(ps)?ps:'');
+    sv.value=pv;if(sm)sm.value=pm;
   });
 }
 function getFilters(){const map={'overview':'ov','employees':'emp','types':'typ'};for(const[name,p] of Object.entries(map)){const el=document.getElementById('page-'+name);if(el&&el.classList.contains('active'))return{staff:document.getElementById(`${p}-staff`)?.value||'',service:document.getElementById(`${p}-service`)?.value||'',month:document.getElementById(`${p}-month`)?.value||'',from:document.getElementById(`${p}-from`)?.value||'',to:document.getElementById(`${p}-to`)?.value||'',dept:document.getElementById(`${p}-dept`)?.value||''};}
